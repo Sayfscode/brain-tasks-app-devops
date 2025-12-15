@@ -5,14 +5,24 @@ env:
     AWS_REGION: ap-south-1
     ECR_REPO: brain-tasks-app
     IMAGE_TAG: latest
+    EKS_CLUSTER_NAME: brain-eks
 
 phases:
+  install:
+    runtime-versions:
+      docker: 20
+    commands:
+      - echo Installing kubectl...
+      - curl -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.29.0/2024-01-04/bin/linux/amd64/kubectl
+      - chmod +x kubectl
+      - mv kubectl /usr/local/bin/
+      - kubectl version --client
+
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
       - aws --version
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin 731493185938.dkr.ecr.ap-south-1.amazonaws.com
-      - echo Login successful
 
   build:
     commands:
@@ -26,10 +36,15 @@ phases:
       - docker tag $ECR_REPO:$IMAGE_TAG 731493185938.dkr.ecr.ap-south-1.amazonaws.com/$ECR_REPO:$IMAGE_TAG
       - echo Pushing image to ECR...
       - docker push 731493185938.dkr.ecr.ap-south-1.amazonaws.com/$ECR_REPO:$IMAGE_TAG
-      - echo Build completed successfully
+
+      - echo Updating kubeconfig...
+      - aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+
+      - echo Deploying to EKS...
+      - kubectl apply -f deployment.yaml
+      - kubectl apply -f service.yaml
 
 artifacts:
   files:
     - deployment.yaml
     - service.yaml
-    - appspec.yml
