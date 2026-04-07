@@ -1,0 +1,8 @@
+.git
+.gitignore
+README.md
+screenshots/
+k8s/
+buildspec.yml
+.DS_Store
+node_modules/

@@ -1,79 +1,95 @@
-Intro
+# Brain Tasks App — DevOps Deployment
 
-This project is my first DevOps deployment project.
-The aim of this project was to understand how a simple frontend application can be deployed using Docker, AWS, and Kubernetes.
+A containerized React application deployed on AWS EKS (Kubernetes) with a fully automated CI/CD pipeline using AWS CodeBuild and ECR.
 
-Application Details
-	•	Application: Brain Tasks App
-	•	Frontend: React
-	•	The application runs inside a Docker container
-	•	The final application is deployed on AWS EKS (Kubernetes)
+## Architecture
 
+```
+GitHub (Source Code)
+    |
+    v
+AWS CodeBuild (CI/CD)
+    |-- Builds Docker image
+    |-- Tags with git commit SHA
+    |-- Pushes to ECR
+    v
+AWS ECR (Container Registry)
+    |
+    v
+AWS EKS (Kubernetes Cluster)
+    |-- Deployment: 2 replicas with health checks
+    |-- Service: LoadBalancer exposes app on port 80
+    v
+User accesses app via Load Balancer URL
+```
 
-Tools and Services Used
-	•	GitHub – to store the source code
-	•	Docker – to containerize the application
-	•	AWS ECR – to store Docker images
-	•	AWS EKS – to run the application using Kubernetes
-	•	AWS CodeBuild – to build and push Docker images
-	•	AWS CloudWatch Logs – to view build and deployment logs
+## Tech Stack
 
+| Tool | Purpose |
+|------|---------|
+| React | Frontend application |
+| Docker | Containerization |
+| Nginx | Web server (serves static files, SPA routing) |
+| AWS ECR | Docker image registry |
+| AWS EKS | Kubernetes cluster |
+| AWS CodeBuild | CI/CD pipeline |
+| AWS CloudWatch | Build and deployment logs |
 
-Dockerization
-	•	A Dockerfile was created to build the React application
-	•	The app is served using Nginx
-	•	The Docker image is built locally and also through AWS CodeBuild
+## Project Structure
 
-AWS ECR (Elastic Container Registry)
-	•	An ECR repository was created
-	•	Docker images are pushed to ECR
-	•	CodeBuild is configured to authenticate and push images automatically
+```
+.
+├── dist/                  # Built React application
+├── k8s/
+│   ├── deployment.yaml    # Kubernetes Deployment (2 replicas, resource limits, health probes)
+│   └── service.yaml       # Kubernetes Service (LoadBalancer)
+├── screenshots/           # Deployment evidence
+├── Dockerfile             # Container image definition (Nginx, non-root, health check)
+├── nginx.conf             # Nginx config (gzip, security headers, SPA routing)
+├── buildspec.yml          # AWS CodeBuild pipeline definition
+└── README.md
+```
 
-Kubernetes Deployment (EKS)
-	•	An EKS cluster was created with worker nodes
-	•	Kubernetes manifests were written:
-	•	deployment.yaml → Deploys the application pods
-	•	service.yaml → Exposes the application using a LoadBalancer
-	•	The application is accessible publicly using the LoadBalancer DNS provided by AWS
+## CI/CD Pipeline
 
+The pipeline triggers automatically when code is pushed to GitHub:
 
-CI/CD Process 
+1. **CodeBuild** pulls the latest code from GitHub
+2. **Docker image** is built and tagged with the git commit SHA for version tracking
+3. Image is pushed to **ECR** (Elastic Container Registry)
+4. Application is deployed to **EKS** using Kubernetes manifests
 
-The CI/CD process followed in this project:
-	1.	Code is pushed to GitHub
-	2.	AWS CodeBuild pulls the code
-	3.	Docker image is built
-	4.	Image is pushed to AWS ECR
-	5.	Application is deployed to EKS using Kubernetes manifests
+> CodeDeploy was initially planned but was replaced with direct `kubectl` deployment from CodeBuild due to account configuration constraints.
 
-Instead of using CodeDeploy (had account issues), deployment is done using a custom script approach, which is allowed as per the project requirements.
+## Key DevOps Practices
 
+- **No hardcoded credentials** — AWS Account ID is resolved dynamically in the build pipeline
+- **Image versioning** — Each build is tagged with the git commit SHA, not just `latest`
+- **Non-root container** — Nginx runs as a non-root user for security
+- **Health checks** — Docker HEALTHCHECK and Kubernetes liveness/readiness probes ensure the app is running
+- **Resource limits** — Kubernetes pods have CPU and memory limits to prevent resource exhaustion
+- **Security headers** — Nginx adds X-Frame-Options, X-Content-Type-Options, and XSS protection headers
+- **Gzip compression** — Reduces payload size for faster load times
 
-CodeBuild:
-	•	Pulls code from GitHub
-	•	Builds Docker image
-	•	Pushes image to ECR
-	•	Deploys the application to EKS using kubectl
+## Screenshots
 
+| Step | Screenshot |
+|------|-----------|
+| GitHub Repository | ![GitHub](screenshots/01-GithubRepo.png) |
+| CodeBuild Success | ![CodeBuild](screenshots/02-Codebuild%20Success.png) |
+| ECR Image | ![ECR](screenshots/03-ECR%20Image.png) |
+| EKS Cluster | ![EKS](screenshots/04-EKS%20Cluster%20Active.png) |
+| Running Pods | ![Pods](screenshots/05-kubectl%20pods%26service.png) |
+| Live Application | ![App](screenshots/06-Application%20Browser.png) |
 
+## Local Development
 
-Monitoring and Logs
-	•	AWS CloudWatch Logs is used to view:
-	•	CodeBuild build logs
-	•	Docker image build and push logs
-	•	Application logs can be checked using Kubernetes pod logs
+```bash
+# Build the Docker image
+docker build -t brain-tasks-app .
 
+# Run locally
+docker run -p 3000:3000 brain-tasks-app
 
-
-Application Access
-
-The application is deployed on Kubernetes using a Service of type LoadBalancer.
-
-Kubernetes automatically created an AWS Classic Load Balancer for external access.
-
-Application URL:
-http://a8ee9728b82484316836e2d1dc5c3d59-1547154432.ap-south-1.elb.amazonaws.com
-
-Kubernetes LoadBalancer ARN:
-arn:aws:elasticloadbalancing:ap-south-1:731493185938:loadbalancer/a8ee9728b82484316836e2d1dc5c3d59
-
+# Access at http://localhost:3000
+```
