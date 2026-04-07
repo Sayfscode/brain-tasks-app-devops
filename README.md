@@ -2,6 +2,8 @@
 
 A containerized React application deployed on AWS EKS (Kubernetes) with a fully automated CI/CD pipeline using AWS CodeBuild and ECR.
 
+> **Note:** The React application was provided as a pre-built artifact (`dist/`). This project focuses on the **DevOps side** — containerization, CI/CD, and Kubernetes deployment — not application development.
+
 ## Architecture
 
 ```
